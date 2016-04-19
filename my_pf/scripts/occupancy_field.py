@@ -96,5 +96,5 @@ class OccupancyField(object):
         if closest == float('nan'):
             particle.w = 0.0
         else:
-            position = math.sqrt((particle.x**2)+(particle.y)**2)
+            position = math.sqrt((particle.x**2)+(particle.y**2))
             particle.w += norm(0, model_noise_rate).pdf(position - observation)

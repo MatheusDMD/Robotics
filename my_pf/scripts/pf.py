@@ -161,6 +161,7 @@ class ParticleFilter:
         # just to get started we will fix the robot's pose to always be at the origin
         self.robot_pose = Pose()
 
+
     def update_particles_with_odom(self, msg):
         """ Update the particles using the newly given odometry pose.
             The function computes the value delta which is a tuple (x,y,theta)
@@ -169,6 +170,7 @@ class ParticleFilter:
 
             msg: this is not really needed to implement this, but is here just in case.
         """
+        print('update_w_odom')
         if self.current_odom_xy_theta:
             new_odom_xy_theta = convert_pose_to_xy_and_theta(self.odom_pose.pose)
             # compute the change in x,y,theta since our last update
@@ -221,6 +223,7 @@ class ParticleFilter:
 
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
+        print('update_w_laser')
         readings = msg.ranges
         for read in readings:
             for particle in self.particle_cloud:
@@ -253,6 +256,7 @@ class ParticleFilter:
             probabilities: the probability of selecting each element in choices represented as a list
             n: the number of samples
         """
+        print('draw_random_sample')
         values = np.array(range(len(choices)))
         probs = np.array(probabilities)
         bins = np.add.accumulate(probs)
@@ -293,6 +297,8 @@ class ParticleFilter:
         # TODO: implement this
 
     def publish_particles(self, msg):
+
+        print('publish_particles')
         particles_conv = []
         for p in self.particle_cloud:
             particles_conv.append(p.as_pose())
@@ -305,6 +311,8 @@ class ParticleFilter:
         """ This is the default logic for what to do when processing scan data.
             Feel free to modify this, however, I hope it will provide a good
             guide.  The input msg is an object of type sensor_msgs/LaserScan """
+
+        print('scan_received')
         if not(self.initialized):
             # wait for initialization to complete
             return
@@ -368,9 +376,10 @@ class ParticleFilter:
         if not(hasattr(self,'translation') and hasattr(self,'rotation')):
             return
 
+        print('broadcast')
         self.tf_broadcaster.sendTransform(self.translation,
                                       self.rotation,
-                                      rospy.Time(0),
+                                      rospy.Time.now(),
                                       self.odom_frame,
                                       self.map_frame)
 
