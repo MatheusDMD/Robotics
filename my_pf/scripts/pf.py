@@ -94,7 +94,7 @@ class ParticleFilter:
         self.odom_frame = "odom"        # the name of the odometry coordinate frame
         self.scan_topic = "scan"        # the topic where we will get laser scans from
 
-        self.n_particles = 200         # the number of particles to use
+        self.n_particles = 250         # the number of particles to use
 
 
         self.d_thresh = 0.2             # the amount of linear movement before performing an update
@@ -197,9 +197,9 @@ class ParticleFilter:
                 parc = (math.atan2(delta[1], delta[0]) - old_odom_xy_theta[2]) % 360
                 particle.x += (math.sqrt((delta[0]**2) + (delta[1]**2)))* math.cos(parc)
                 particle.y += (math.sqrt((delta[0]**2) + (delta[1]**2))) * math.sin(parc)
-                particle.theta += ((delta[2] - math.atan2(delta[1], delta[0]) - old_odom_xy_theta[2]) % 360) + parc
+                particle.theta += delta[2]
         else:
-            print("here")
+            
             self.current_odom_xy_theta = new_odom_xy_theta
             return
             
@@ -220,48 +220,30 @@ class ParticleFilter:
         """
         # make sure the distribution is normalized
         self.normalize_particles()
-
-        new_particles = []
+        values = np.empty(self.n_particles)
+        probs = np.empty(self.n_particles)
         for i in range(len(self.particle_cloud)):
-            # resample the same # of particles
-            choice = random_sample()
-            # all the particle weights sum to 1
-            csum = 0 # cumulative sum
-            for particle in self.particle_cloud:
-                csum += particle.w
-                if csum >= choice:
-                    # if the random choice fell within the particle's weight
-                    new_particles.append(deepcopy(particle))
-                    break
+            values[i] = i
+            probs[i] = self.particle_cloud[i].w
+        new_random_particle = ParticleFilter.weighted_values(values,probs,self.n_particles)
+        new_particles = []
+        for i in new_random_particle:
+            idx = int(i)
+            s_p = self.particle_cloud[idx]
+            new_particles.append(Particle(x=s_p.x+gauss(0,.025),y=s_p.y+gauss(0,.05),theta=s_p.theta+gauss(0,.05)))
         self.particle_cloud = new_particles
-        # TODO: fill out the rest of the implementation
+        self.normalize_particles()
 
     def update_particles_with_laser(self, msg):
         """ Updates the particle weights in response to the scan contained in the msg """
         print('update_w_laser')
         readings = msg.ranges
         for particle in self.particle_cloud:
-            for read in range(len(0,readings,10)):
+            for read in range(0,len(readings),3):
                 self.field.get_particle_likelyhood(particle,readings[read],self.model_noise_rate,read)
 
-        self.particle_cloud = weighted_values(self.particle_cloud,[p.w for p in self.particle_cloud],len(self.particle_cloud))
         self.normalize_particles()
         self.resample_particles()
-        """for particle in self.particle_cloud:
-            tot_prob = 0
-            for index, scan in enumerate(msg.ranges):
-                x,y = self.transform_scan(particle,scan,index)
-                # transform scan to view of the particle
-                d = self.occupancy_field.get_closest_obstacle_distance(x,y)
-                # calculate nearest distance to particle's scan (should be near 0 if it's on robot)
-                tot_prob += math.exp((-d**2)/(2*self.sigma**2))
-                # add probability (0 to 1) to total probability
-
-            tot_prob = tot_prob/len(msg.ranges)
-            # normalize total probability back to 0-1
-            particle.w = tot_prob
-            # assign particles weight"""
-
 
     @staticmethod
     def weighted_values(values, probabilities, size):
@@ -270,16 +252,8 @@ class ParticleFilter:
             probabilities: the probability of selecting each element in values (numpy.ndarray)
             size: the number of samples
         """
-        """
         bins = np.add.accumulate(probabilities)
-        return values[np.digitize(random_sample(size), bins)]
-        """
-        bins = np.add.accumulate(probabilities)
-        indices = np.digitize(random_sample(size), bins)
-        sample = []
-        for ind in indices:
-            sample.append(deepcopy(values[ind]))
-        return sample
+        return values[np.digitize(random_sample(size), bins)-1]
 
     @staticmethod
     def draw_random_sample(choices, probabilities, n):
@@ -322,7 +296,8 @@ class ParticleFilter:
 
     def normalize_particles(self):
         """ Make sure the particle weights define a valid distribution (i.e. sum to 1.0) """
-        w_sum = sum([p.w for p in self.particle_cloud]) or 1
+        w_sum = sum([p.w for p in self.particle_cloud])
+
         for particle in self.particle_cloud:
             particle.w /= w_sum
         # TODO: implement this
@@ -336,7 +311,7 @@ class ParticleFilter:
         # actually send the message so that we can view it in rviz
         self.particle_pub.publish(PoseArray(header=Header(stamp=rospy.Time.now(),
                                             frame_id=self.map_frame),
-                                  poses=particles_conv))
+                                              poses=particles_conv))
 
     def scan_received(self, msg):
         """ This is the default logic for what to do when processing scan data.

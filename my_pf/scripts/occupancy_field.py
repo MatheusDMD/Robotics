@@ -92,9 +92,9 @@ class OccupancyField(object):
         return self.closest_occ[ind]
 
     def get_particle_likelyhood(self,particle,observation,model_noise_rate,theta):
-        closest = self.get_closest_obstacle_distance(particle.x + observation * math.cos(math.radians(particle.theta + theta)),particle.y + observation * math.sin(math.radians(particle.theta + theta)))
+        closest = self.get_closest_obstacle_distance(observation * math.cos(math.radians(particle.theta + theta)),observation * math.sin(math.radians(particle.theta + theta)))
         if closest == (float('nan')):
-            particle.w = 0.0
+            particle.w = 0.0001
         else:
-            position = math.sqrt((particle.x**2)+(particle.y**2))
-            particle.w *= norm(0, model_noise_rate).pdf(position - observation)
+            position = math.sqrt(((particle.x+0.1)**2)+((particle.y+0.1)**2))
+            particle.w = norm(0, model_noise_rate).pdf(position - observation)
