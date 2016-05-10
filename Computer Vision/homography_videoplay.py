@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 import time
 
 #Before using this run find.py to generate the image this program is going to search for.
-
+print("Before using this run:\n$python find.py\nto generate the image this program is going to search for.")
 
 #cap = cv2.VideoCapture('hall_box_battery.mp4')
 cap = cv2.VideoCapture(0)
